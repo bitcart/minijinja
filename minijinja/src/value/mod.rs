@@ -707,8 +707,23 @@ impl Hash for Value {
 #[derive(Clone)]
 pub struct Value(pub(crate) ValueRepr);
 
+fn object_cmp(left: &Value, right: &Value) -> Option<Ordering> {
+    if let ValueRepr::Object(ref obj) = left.0 {
+        if let Some(rv) = obj.custom_cmp_value(right) {
+            return Some(rv);
+        }
+    }
+    if let ValueRepr::Object(ref obj) = right.0 {
+        return obj.custom_cmp_value(left).map(Ordering::reverse);
+    }
+    None
+}
+
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
+        if let Some(rv) = object_cmp(self, other) {
+            return rv == Ordering::Equal;
+        }
         match (&self.0, &other.0) {
             (&ValueRepr::None, &ValueRepr::None) => true,
             (&ValueRepr::Undefined(..), &ValueRepr::Undefined(..)) => true,
@@ -891,6 +906,9 @@ fn cmp_uncoercible_numbers(left: &Value, right: &Value) -> Ordering {
 
 impl Ord for Value {
     fn cmp(&self, other: &Self) -> Ordering {
+        if let Some(rv) = object_cmp(self, other) {
+            return rv;
+        }
         match (&self.0, &other.0) {
             (&ValueRepr::Bool(a), _) if other.is_number() => {
                 return Value::from(a as i64).cmp(other)

@@ -331,9 +331,24 @@ fn failed_op(op: &str, lhs: &Value, rhs: &Value) -> Error {
     )
 }
 
+fn object_op(op: &str, lhs: &Value, rhs: &Value) -> Option<Result<Value, Error>> {
+    if let ValueRepr::Object(ref obj) = lhs.0 {
+        if let Some(rv) = obj.custom_op(op, rhs, false) {
+            return Some(rv);
+        }
+    }
+    if let ValueRepr::Object(ref obj) = rhs.0 {
+        return obj.custom_op(op, lhs, true);
+    }
+    None
+}
+
 macro_rules! math_binop {
     ($name:ident, $int:ident, $float:tt) => {
         pub fn $name(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
+            if let Some(rv) = object_op(stringify!($float), lhs, rhs) {
+                return rv;
+            }
             match coerce(lhs, rhs, true) {
                 Some(CoerceResult::I128(a, b)) => match a.$int(b) {
                     Some(val) => Ok(int_as_value(val)),
@@ -362,6 +377,9 @@ fn materialize_seq_concat(lhs: &Value, rhs: &Value, len: usize) -> Result<Value,
 }
 
 pub fn add(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
+    if let Some(rv) = object_op("+", lhs, rhs) {
+        return rv;
+    }
     if lhs.is_tuple() || rhs.is_tuple() {
         if lhs.is_tuple() && rhs.is_tuple() {
             let mut values = Vec::with_capacity(untrusted_size_hint(
@@ -445,6 +463,9 @@ fn float_div_rem_floor(a: f64, b: f64) -> (f64, f64) {
 }
 
 pub fn rem(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
+    if let Some(rv) = object_op("%", lhs, rhs) {
+        return rv;
+    }
     match coerce(lhs, rhs, true) {
         Some(CoerceResult::I128(a, b)) if b != 0 => {
             if a == i128::MIN && b == -1 {
@@ -462,6 +483,9 @@ pub fn rem(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
 }
 
 pub fn mul(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
+    if let Some(rv) = object_op("*", lhs, rhs) {
+        return rv;
+    }
     if let Some((s, n)) = lhs
         .as_str()
         .map(|s| (s, rhs))
@@ -562,6 +586,9 @@ fn repeat_iterable(n: &Value, seq: &DynObject) -> Result<Value, Error> {
 }
 
 pub fn div(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
+    if let Some(rv) = object_op("/", lhs, rhs) {
+        return rv;
+    }
     let Some(a) = as_f64(lhs, true) else {
         return Err(impossible_op("/", lhs, rhs));
     };
@@ -576,6 +603,9 @@ pub fn div(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
 }
 
 pub fn int_div(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
+    if let Some(rv) = object_op("//", lhs, rhs) {
+        return rv;
+    }
     match coerce(lhs, rhs, true) {
         Some(CoerceResult::I128(a, b)) if b != 0 => {
             if a == i128::MIN && b == -1 {
@@ -594,6 +624,9 @@ pub fn int_div(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
 
 /// Implements a binary `pow` operation on values.
 pub fn pow(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
+    if let Some(rv) = object_op("**", lhs, rhs) {
+        return rv;
+    }
     match coerce(lhs, rhs, true) {
         // A negative exponent gives a fractional result, like in Python.
         // Zero to a negative power fails like a division by zero.
@@ -618,6 +651,9 @@ pub fn pow(lhs: &Value, rhs: &Value) -> Result<Value, Error> {
 
 /// Implements an unary `neg` operation on value.
 pub fn neg(val: &Value) -> Result<Value, Error> {
+    if let Some(rv) = object_op("neg", val, &Value::UNDEFINED) {
+        return rv;
+    }
     if val.kind() == ValueKind::Number {
         match val.0 {
             ValueRepr::F64(x) => Ok((-x).into()),

@@ -288,6 +288,30 @@ pub trait Object: fmt::Debug + Send + Sync {
         None
     }
 
+    /// Compares this object with any other value, for example a plain number.
+    ///
+    /// Unlike [`custom_cmp`](Self::custom_cmp) this is not limited to objects of
+    /// the same type.  Returning `None` falls back to the default comparison.
+    fn custom_cmp_value(self: &Arc<Self>, other: &Value) -> Option<Ordering> {
+        let _ = other;
+        None
+    }
+
+    /// Implements a math operator for this object.
+    ///
+    /// `op` is one of `+`, `-`, `*`, `/`, `//`, `%`, `**` or, for unary minus with
+    /// an undefined `other`, `neg`.  `reflected` is `true` when this object is the
+    /// right operand.  Returning `None` falls back to the default behavior.
+    fn custom_op(
+        self: &Arc<Self>,
+        op: &str,
+        other: &Value,
+        reflected: bool,
+    ) -> Option<Result<Value, Error>> {
+        let _ = (op, other, reflected);
+        None
+    }
+
     /// Formats the object for stringification.
     ///
     /// The default implementation is specific to the behavior of
@@ -925,6 +949,10 @@ type_erase! {
         ) -> Result<Value, Error>;
 
         fn custom_cmp(&self, other: &DynObject) -> Option<Ordering>;
+
+        fn custom_cmp_value(&self, other: &Value) -> Option<Ordering>;
+
+        fn custom_op(&self, op: &str, other: &Value, reflected: bool) -> Option<Result<Value, Error>>;
 
         fn render(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
