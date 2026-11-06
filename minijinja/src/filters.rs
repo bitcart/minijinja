@@ -2558,6 +2558,7 @@ mod builtins {
                     // conversion specifiers continue to work.
                     if value.is_safe()
                         || matches!(value.kind(), ValueKind::Bool | ValueKind::Number)
+                        || crate::tests::is_number(value)
                     {
                         Ok(None)
                     } else {

@@ -8,6 +8,7 @@
 use std::fmt::{Display, LowerExp};
 use std::num::FpCategory;
 
+use crate::value::ops::object_op;
 use crate::value::ValueKind;
 use crate::{Error, ErrorKind, Value};
 
@@ -193,6 +194,24 @@ fn python_float_str(val: f64) -> String {
 impl FormatSpec {
     // Format the given value according to this spec
     fn format(&self, val: &Value) -> Result<String, Error> {
+        let number = match self.ty {
+            Type::Binary
+            | Type::Decimal
+            | Type::Octal
+            | Type::LowerHex
+            | Type::UpperHex
+            | Type::Char => object_op("int", val, &Value::UNDEFINED),
+            Type::LowerE
+            | Type::UpperE
+            | Type::LowerF
+            | Type::UpperF
+            | Type::LowerG
+            | Type::UpperG => object_op("float", val, &Value::UNDEFINED),
+            Type::Default | Type::String => None,
+        };
+        if let Some(number) = number {
+            return self.format(&number?);
+        }
         if let Ok(boolean) = bool::try_from(val.clone()) {
             self.format_bool(boolean)
         } else if let Some((number, is_negative)) = Self::cast_to_abs_integer(val) {
