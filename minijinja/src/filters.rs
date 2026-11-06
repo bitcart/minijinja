@@ -839,6 +839,9 @@ mod builtins {
     /// ```
     #[cfg_attr(docsrs, doc(cfg(feature = "builtins")))]
     pub fn abs(value: Value) -> Result<Value, Error> {
+        if let Some(rv) = ops::object_op("abs", &value, &Value::UNDEFINED) {
+            return rv;
+        }
         match value.0 {
             ValueRepr::U64(_) | ValueRepr::U128(_) => Ok(value),
             ValueRepr::I64(x) => match x.checked_abs() {
@@ -887,6 +890,9 @@ mod builtins {
             None => ok!(kwargs.get::<Option<u32>>("base")).unwrap_or(10),
         };
         ok!(kwargs.assert_all_used());
+        if let Some(rv) = ops::object_op("int", value, &Value::UNDEFINED) {
+            return rv;
+        }
 
         let rv = match &value.0 {
             ValueRepr::Undefined(..) | ValueRepr::None => {
@@ -964,6 +970,9 @@ mod builtins {
             None => ok!(kwargs.get::<Option<Value>>("default")),
         };
         ok!(kwargs.assert_all_used());
+        if let Some(rv) = ops::object_op("float", value, &Value::UNDEFINED) {
+            return rv;
+        }
 
         let rv = match &value.0 {
             ValueRepr::Undefined(..) | ValueRepr::None => {
@@ -1026,7 +1035,11 @@ mod builtins {
             ok!(value.check());
             if value.is_undefined() {
                 continue;
-            } else if rv.is_number() && !value.is_number() && value.kind() != ValueKind::Bool {
+            } else if rv.is_number()
+                && !value.is_number()
+                && value.kind() != ValueKind::Bool
+                && !crate::tests::is_number(&value)
+            {
                 return Err(Error::new(
                     ErrorKind::InvalidOperation,
                     format!("can only sum numbers, got {}", value.kind()),
@@ -1229,6 +1242,10 @@ mod builtins {
                 ErrorKind::InvalidOperation,
                 "method must be common, ceil or floor",
             ));
+        }
+        let options = Value::from(vec![Value::from(precision), Value::from(method)]);
+        if let Some(rv) = ops::object_op("round", &value, &options) {
+            return rv;
         }
 
         match value.0 {

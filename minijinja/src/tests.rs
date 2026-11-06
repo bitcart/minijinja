@@ -118,6 +118,10 @@ mod builtins {
         v.kind() == ValueKind::Bool
     }
 
+    fn object_test(op: &str, value: &Value, other: &Value) -> Option<bool> {
+        crate::value::ops::object_op(op, value, other).map(|rv| rv.is_ok_and(|rv| rv.is_true()))
+    }
+
     /// Checks if a value is odd.
     ///
     /// ```jinja
@@ -125,6 +129,9 @@ mod builtins {
     /// ```
     #[cfg_attr(docsrs, doc(cfg(feature = "builtins")))]
     pub fn is_odd(v: Value) -> bool {
+        if let Some(rv) = object_test("odd", &v, &Value::UNDEFINED) {
+            return rv;
+        }
         i128::try_from(v).ok().is_some_and(|x| x % 2 != 0)
     }
 
@@ -135,6 +142,9 @@ mod builtins {
     /// ```
     #[cfg_attr(docsrs, doc(cfg(feature = "builtins")))]
     pub fn is_even(v: Value) -> bool {
+        if let Some(rv) = object_test("even", &v, &Value::UNDEFINED) {
+            return rv;
+        }
         i128::try_from(v).ok().is_some_and(|x| x % 2 == 0)
     }
 
@@ -145,8 +155,11 @@ mod builtins {
     /// ```
     #[cfg_attr(docsrs, doc(cfg(feature = "builtins")))]
     pub fn is_divisibleby(v: &Value, other: &Value) -> bool {
+        if let Some(rv) = object_test("divisibleby", v, other) {
+            return rv;
+        }
         match coerce(v, other, false) {
-            Some(CoerceResult::I128(a, b)) => (a % b) == 0,
+            Some(CoerceResult::I128(a, b)) => a.checked_rem(b) == Some(0),
             Some(CoerceResult::F64(a, b)) => (a % b) == 0.0,
             _ => false,
         }
@@ -160,6 +173,9 @@ mod builtins {
     /// ```
     #[cfg_attr(docsrs, doc(cfg(feature = "builtins")))]
     pub fn is_number(v: &Value) -> bool {
+        if let Some(rv) = object_test("number", v, &Value::UNDEFINED) {
+            return rv;
+        }
         matches!(v.kind(), ValueKind::Number | ValueKind::Bool)
     }
 

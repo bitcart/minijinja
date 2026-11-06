@@ -302,6 +302,11 @@ pub trait Object: fmt::Debug + Send + Sync {
     /// `op` is one of `+`, `-`, `*`, `/`, `//`, `%`, `**` or, for unary minus with
     /// an undefined `other`, `neg`.  `reflected` is `true` when this object is the
     /// right operand.  Returning `None` falls back to the default behavior.
+    ///
+    /// Numeric built-ins ask the same way, so a number-like object can stay exact:
+    /// the `abs`, `int`, `float` and `round` filters, with `other` set to the
+    /// `[precision, method]` list for `round`, and the `number`, `odd`, `even` and
+    /// `divisibleby` tests, where a truthy result means the test passes.
     fn custom_op(
         self: &Arc<Self>,
         op: &str,

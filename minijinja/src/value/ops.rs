@@ -331,7 +331,7 @@ fn failed_op(op: &str, lhs: &Value, rhs: &Value) -> Error {
     )
 }
 
-fn object_op(op: &str, lhs: &Value, rhs: &Value) -> Option<Result<Value, Error>> {
+pub(crate) fn object_op(op: &str, lhs: &Value, rhs: &Value) -> Option<Result<Value, Error>> {
     if let ValueRepr::Object(ref obj) = lhs.0 {
         if let Some(rv) = obj.custom_op(op, rhs, false) {
             return Some(rv);
